@@ -11,39 +11,26 @@ namespace CG
     {
         private Vector4 CLEAR_COLOR = new Vector4(0f, 0.3f, 0.5f, 1f);
 
-        private ShaderProgram _program;
-        private Texture _ceiling_texture, _ground_texture, _wall_texture;
-        private Camera _camera;
+        private ShaderProgram program;
+        private Texture ceilingTexture, groundTexture, wallTexture;
+        private Camera camera;
         private List<GameObject> gameObjects = new();
         private GameObject cubeGameObject;
 
-        private float _time;
-        private float _delta_time;
+        private float totalTime;
+        private float deltaTime;
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
         {
-            Mesh _cube_mesh = Mesh.CreatePrimitiveCube(2f);
-            // _transform.position.Y = -0.5f;
+            CreateShaderProgram();
+            CreateTextures();
 
-            // Com as novas classes de shader, podemos carregá-los diretamente de arquivos.
-            VertexShader vertShader = VertexShader.LoadFromFile("./assets/shaders/shader.vert");
-            FragmentShader fragShader = FragmentShader.LoadFromFile("./assets/shaders/shader.frag");
-
-            // De forma similar, a classe ProgramShader junta os diferentes shaders.
-            _program = new(vertShader, fragShader);
-
-            // Carregamento de texturas, que serão armazenadas na placa de vídeo.
-            _wall_texture = new Texture("./assets/textures/wall.png"); // 0
-            _ground_texture = new Texture("./assets/textures/ground.png"); // 1
-            _ceiling_texture = new Texture("./assets/textures/ceiling.png"); // 2
-
+            Mesh _cube_mesh = Mesh.CreatePrimitivePlane();
             cubeGameObject = new(_cube_mesh,0);
-
             gameObjects.Add(cubeGameObject);
 
-            //_camera = new OrthographicCamera(Size.X / 100f, Size.Y / 100f);
-            _camera = new PerspectiveCamera(90f, (float)Size.X / Size.Y);
-            // _camera.position.Z = 3f;// afasta a câmera para trás.
+            //camera = new OrthographicCamera(Size.X / 100f, Size.Y / 100f);
+            camera = new PerspectiveCamera(90f, (float)Size.X / Size.Y);
 
             GL.Enable(EnableCap.DepthTest);
         }
@@ -51,19 +38,20 @@ namespace CG
         protected override void OnUpdateFrame(FrameEventArgs args)
         {
             base.OnUpdateFrame(args);
-            cubeGameObject.transform.rotation.Y = _time * 90f;
+            cubeGameObject.transform.rotation.X = totalTime * 90f;
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
-            UpdateTime((float)args.Time);
+            base.OnRenderFrame(args);
+            UpdateTimeVariables((float)args.Time);
             FrameCleanup(args);
             ShaderRender();
             CameraRender();
 
             foreach (GameObject gameObject in gameObjects)
             {
-                gameObject.Render(_program);
+                gameObject.Render(program);
             }
 
             SwapBuffers();// Troca de buffers, apresentando o desenho completo ao usuário.
@@ -74,13 +62,30 @@ namespace CG
         private void CameraRender()
         {
             // Envio das matrizes da câmera
-            _program.SetUniform("u_View", _camera.ViewMatrix);
-            _program.SetUniform("u_Projection", _camera.ProjectionMatrix);
+            program.SetUniform("u_View", camera.ViewMatrix);
+            program.SetUniform("u_Projection", camera.ProjectionMatrix);
+        }
+
+        private void CreateShaderProgram()
+        {
+            // Com as novas classes de shader, podemos carregá-los diretamente de arquivos.
+            VertexShader vertShader = VertexShader.LoadFromFile("./assets/shaders/shader.vert");
+            FragmentShader fragShader = FragmentShader.LoadFromFile("./assets/shaders/shader.frag");
+
+            // De forma similar, a classe ProgramShader junta os diferentes shaders.
+            program = new(vertShader, fragShader);
+        }
+
+        private void CreateTextures()
+        {
+            // Carregamento de texturas, que serão armazenadas na placa de vídeo.
+            wallTexture = new Texture("./assets/textures/wall.png"); // 0
+            groundTexture = new Texture("./assets/textures/ground.png"); // 1
+            ceilingTexture = new Texture("./assets/textures/ceiling.png"); // 2
         }
 
         private void FrameCleanup(FrameEventArgs args)
         {
-            base.OnRenderFrame(args);
             // Escolha da cor de limpeza.
             GL.ClearColor(CLEAR_COLOR.X,CLEAR_COLOR.Y,CLEAR_COLOR.Z,CLEAR_COLOR.W);
             // Limpeza das cores e profundidade da tela.
@@ -89,18 +94,18 @@ namespace CG
 
         private void ShaderRender()
         {
-            _program.Use();// Escolha do Shader Program.
+            program.Use();// Escolha do Shader Program.
             // Para usar texturas, dizemos em qual "caixinha" a queremos colocar. Para acessar essa
             //caixinha nos shaders, atribuímos o id da caixinha à variável uniforme correspondente.
-            _wall_texture.Use(0);
-            _ground_texture.Use(1);
-            _ceiling_texture.Use(2);
+            wallTexture.Use(0);
+            groundTexture.Use(1);
+            ceilingTexture.Use(2);
         }
 
-        private void UpdateTime(float new_time)
+        private void UpdateTimeVariables(float _deltaTime)
         {
-            _delta_time = new_time-_time;
-            _time = new_time;
+            deltaTime = _deltaTime;
+            totalTime += deltaTime;
         }
     }
 }
