@@ -33,6 +33,9 @@ namespace CG
             camera = new PerspectiveCamera(90f, (float)Size.X / Size.Y);
 
             GL.Enable(EnableCap.DepthTest);
+
+            Maze maze = new Maze(12,true);
+            Console.WriteLine("Deu boa!");
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)
