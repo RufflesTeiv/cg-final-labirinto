@@ -15,7 +15,6 @@ namespace CG
         private Texture ceilingTexture, groundTexture, wallTexture;
         private Camera camera;
         private List<GameObject> gameObjects = new();
-        private GameObject cubeGameObject;
 
         private float totalTime;
         private float deltaTime;
@@ -24,24 +23,17 @@ namespace CG
         {
             CreateShaderProgram();
             CreateTextures();
+            CameraSetup();
+            OpenGLSetup();
 
-            Mesh _cube_mesh = Mesh.CreatePrimitivePlane();
-            cubeGameObject = new(_cube_mesh,0);
-            gameObjects.Add(cubeGameObject);
-
-            //camera = new OrthographicCamera(Size.X / 100f, Size.Y / 100f);
-            camera = new PerspectiveCamera(90f, (float)Size.X / Size.Y);
-
-            GL.Enable(EnableCap.DepthTest);
-
-            Maze maze = new Maze(12,true);
-            Console.WriteLine("Deu boa!");
+            Maze maze = new Maze(12);
+            gameObjects.AddRange(maze.GetGameObjects(1,0,2));
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)
         {
             base.OnUpdateFrame(args);
-            cubeGameObject.transform.rotation.X = totalTime * 90f;
+            camera.rotation.Y = totalTime * 90f;
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
@@ -61,7 +53,13 @@ namespace CG
         }
 
         
-
+        private void CameraSetup()
+        {
+            //camera = new OrthographicCamera(Size.X / 100f, Size.Y / 100f);
+            camera = new PerspectiveCamera(90f, (float)Size.X / Size.Y);
+            camera.position = new Vector3(0f,0.5f,0f);
+            camera.rotation.X = -20f;
+        }
         private void CameraRender()
         {
             // Envio das matrizes da câmera
@@ -93,6 +91,12 @@ namespace CG
             GL.ClearColor(CLEAR_COLOR.X,CLEAR_COLOR.Y,CLEAR_COLOR.Z,CLEAR_COLOR.W);
             // Limpeza das cores e profundidade da tela.
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        }
+
+        private void OpenGLSetup()
+        {
+            GL.Enable(EnableCap.DepthTest);
+            GL.Disable(EnableCap.CullFace);
         }
 
         private void ShaderRender()
