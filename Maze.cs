@@ -18,6 +18,30 @@ namespace CG
             Generate(width,depth,debug);
         }
 
+        public MazeCell? MoveToCell(int x, int z, MazeDirection direction)
+        { 
+            int newX=x;
+            int newZ=z;
+            switch (direction)
+            {
+                case MazeDirection.North:
+                    newZ = z-1;
+                    break;
+                case MazeDirection.South:
+                    newZ = z+1;
+                    break;
+                case MazeDirection.East:
+                    newX = x+1;
+                    break;
+                case MazeDirection.West:
+                    newX = x-1;
+                    break;
+            }
+            if (newX >= 0 && newX < width && newZ >=0 && newZ < depth)
+                return cells[newX,newZ];
+            return null;
+        }
+
         // Algoritmo de Prim
         // https://weblog.jamisbuck.org/2011/1/10/maze-generation-prim-s-algorithm
         private void Generate(int width, int depth, bool debug = false)
@@ -234,5 +258,29 @@ namespace CG
         East = 2,
         South = 4,
         West = 8
+    }
+
+    internal static class MazeUtility
+    {
+        public static MazeDirection ReverseDirection(MazeDirection direction)
+        {
+            switch (direction)
+            {
+                case MazeDirection.North: return MazeDirection.South;
+                case MazeDirection.South: return MazeDirection.North;
+                case MazeDirection.East: return MazeDirection.West;
+                default: return MazeDirection.East;
+            }
+        }
+
+        public static MazeDirection RotateDirectionLeft(MazeDirection direction)
+        {
+            return direction == MazeDirection.North ? MazeDirection.West : (MazeDirection)((int)direction/2);
+        }
+
+        public static MazeDirection RotateDirectionRight(MazeDirection direction)
+        {
+            return direction == MazeDirection.West ? MazeDirection.North : (MazeDirection)((int)direction*2);
+        }
     }
 }
