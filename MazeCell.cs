@@ -43,6 +43,7 @@ namespace CG
                 if ((flags & (int)direction) != 0)
                     result.Add(GenerateWallGameObject(direction));
             }
+
             return result;
         }
         public GameObject GenerateWallGameObject(MazeDirection direction)

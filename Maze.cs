@@ -8,7 +8,8 @@ namespace CG
     {
         public MazeCell[,] cells;
         int width, depth;
-        public MazeCell startingCell;
+        public MazeCell startingCell, keyCell, exitCell;
+        public GameObject keyGameObj, exitGameObj;
         public Maze(int _size, bool debug = false) : this(_size,_size, debug) {}
         public Maze(int _width, int _depth, bool debug = false)
         {
@@ -18,6 +19,7 @@ namespace CG
             PopulateGrid();
             Generate(width,depth,debug);
             SetSpecialCells();
+            SetSpecialGameObjs();
         }
 
         public MazeCell? MoveToCell(int x, int z, MazeDirection direction)
@@ -96,6 +98,7 @@ namespace CG
                     result.AddRange(cells[x,z].GenerateGameObjects());
                 }
             }
+            result.Add(keyGameObj);
             return result;
         }
         private List<MazeCell> GetNeighbors(MazeCell cell)
@@ -179,10 +182,18 @@ namespace CG
             startingCell = corners[startingCellIdx];
             corners.RemoveAt(startingCellIdx);
             int keyCellIdx = RandomManager.Integer(corners.Count);
-            corners[keyCellIdx].SetIsKey(true);
+            keyCell = corners[keyCellIdx];
+            keyCell.SetIsKey(true);
             corners.RemoveAt(keyCellIdx);
             int exitCellIdx = RandomManager.Integer(corners.Count);
-            corners[exitCellIdx].SetupExit(GetPossibleExitDirections(corners[exitCellIdx]));
+            exitCell = corners[exitCellIdx];
+            exitCell.SetupExit(GetPossibleExitDirections(exitCell));
+        }
+        private void SetSpecialGameObjs()
+        {
+            Mesh keyMesh = Mesh.CreatePrimitivePlane(1);
+            keyGameObj = new GameObject(keyMesh,(int)TextureIdx.Key);
+            keyGameObj.transform.position = new Vector3(keyCell.x,0.001f,keyCell.z);
         }
     }
 }

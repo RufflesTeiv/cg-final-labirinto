@@ -113,6 +113,7 @@ namespace CG
             if (!currentCell.isKey) return;
             currentCell.PickUpKey();
             hasKey = true;
+            gameObjects.Remove(maze.keyGameObj);
             Console.WriteLine("Pegou chave!");
         }
         private void CreateShaderProgram()
