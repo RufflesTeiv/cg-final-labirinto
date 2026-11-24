@@ -8,14 +8,6 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace CG
 {
-    enum TextureIdx
-    {
-        Wall = 0,
-        Ground = 1,
-        Ceiling = 2,
-        Key = 3,
-        Door = 4
-    }
     internal class Game : GameWindow
     {
         private Vector4 CLEAR_COLOR = new Vector4(0f, 0.3f, 0.5f, 1f);
