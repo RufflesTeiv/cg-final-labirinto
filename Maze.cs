@@ -8,14 +8,16 @@ namespace CG
     {
         public MazeCell[,] cells;
         int width, depth;
+        public MazeCell startingCell;
         public Maze(int _size, bool debug = false) : this(_size,_size, debug) {}
         public Maze(int _width, int _depth, bool debug = false)
         {
-            width = _width;
-            depth = _depth;
+            width = Math.Max(_width,2);
+            depth = Math.Max(_depth,2);
             cells = new MazeCell[width,depth];
             PopulateGrid();
             Generate(width,depth,debug);
+            SetSpecialCells();
         }
 
         public MazeCell? MoveToCell(int x, int z, MazeDirection direction)
@@ -74,14 +76,24 @@ namespace CG
                     PrintMaze(inMazeCells,frontierCells,$"Step {step++}");
             }
         }
-        public List<GameObject> GetGameObjects(int groundTextureIdx = 0,int wallTextureIdx = 1,int ceilingTextureIdx = 2)
+        private List<MazeCell> GetCorners()
+        {
+            return
+            [
+              cells[0,0],
+              cells[0,depth-1],
+              cells[width-1,0],
+              cells[width-1,depth-1]  
+            ];
+        }
+        public List<GameObject> GetGameObjects()
         {
             List<GameObject> result = new List<GameObject>();
             for (int x = 0; x < width; x++)
             {
                 for(int z = 0; z < depth; z++)
                 {
-                    result.AddRange(cells[x,z].GenerateGameObjects(groundTextureIdx,wallTextureIdx,ceilingTextureIdx));
+                    result.AddRange(cells[x,z].GenerateGameObjects());
                 }
             }
             return result;
@@ -100,6 +112,15 @@ namespace CG
             if (cell.z < depth-1)
                 neighbors.Add(cells[x,z+1]);
             return neighbors;
+        }
+        public List<MazeDirection> GetPossibleExitDirections(MazeCell cell)
+        {
+            List<MazeDirection> exitDirections = new List<MazeDirection>();
+            if (cell.x == 0) exitDirections.Add(MazeDirection.West);
+            if (cell.x == width-1) exitDirections.Add(MazeDirection.East);
+            if (cell.z == 0) exitDirections.Add(MazeDirection.North);
+            if (cell.z == depth-1) exitDirections.Add(MazeDirection.South);
+            return exitDirections;
         }
         private void PopulateGrid()
         {
@@ -151,6 +172,18 @@ namespace CG
             Console.WriteLine("Pressione qualquer tecla para continuar...");
             Console.ReadKey(true);
         }
+        private void SetSpecialCells()
+        {
+            List<MazeCell> corners = GetCorners();
+            int startingCellIdx = RandomManager.Integer(corners.Count);
+            startingCell = corners[startingCellIdx];
+            corners.RemoveAt(startingCellIdx);
+            int keyCellIdx = RandomManager.Integer(corners.Count);
+            corners[keyCellIdx].SetIsKey(true);
+            corners.RemoveAt(keyCellIdx);
+            int exitCellIdx = RandomManager.Integer(corners.Count);
+            corners[exitCellIdx].SetupExit(GetPossibleExitDirections(corners[exitCellIdx]));
+        }
     }
 
     internal class MazeCell
@@ -158,6 +191,9 @@ namespace CG
 
         public int x,z;
         public int wallFlags = 15;
+        public bool isKey = false;
+        public bool isExit = false;
+        public MazeDirection exitDirection;
         public MazeCell(int _x, int _z)
         {
             x = _x;
@@ -168,17 +204,18 @@ namespace CG
         {
             wallFlags = wallFlags | (int)direction;
         }
-        public List<GameObject> GenerateGameObjects(int groundTextureIdx,int wallTextureIdx,int ceilingTextureIdx)
+        public Vector3 CameraPosition() => new(x,0.5f,z);
+        public List<GameObject> GenerateGameObjects()
         {
             List<GameObject> result = new List<GameObject>();
             // Ground
             Mesh groundMesh = Mesh.CreatePrimitivePlane(1);
-            GameObject groundGameObj = new GameObject(groundMesh,groundTextureIdx);
+            GameObject groundGameObj = new GameObject(groundMesh,(int)TextureIdx.Ground);
             groundGameObj.transform.position = new Vector3(x,0f,z);
             result.Add(groundGameObj);
             // Ceiling
             Mesh ceilingMesh = Mesh.CreatePrimitivePlane(1);
-            GameObject ceilingGameObj = new GameObject(ceilingMesh,ceilingTextureIdx);
+            GameObject ceilingGameObj = new GameObject(ceilingMesh,(int)TextureIdx.Ceiling);
             ceilingGameObj.transform.position = new Vector3(x,1f,z);
             result.Add(ceilingGameObj);
             // Walls
@@ -187,15 +224,14 @@ namespace CG
             foreach (MazeDirection direction in directions)
             {
                 if ((flags & (int)direction) != 0)
-                    result.Add(GenerateWallGameObject(wallTextureIdx,direction));
+                    result.Add(GenerateWallGameObject(direction));
             }
             return result;
         }
-
-        public GameObject GenerateWallGameObject(int wallTextureIdx, MazeDirection direction)
+        public GameObject GenerateWallGameObject(MazeDirection direction)
         {
             Mesh mesh = Mesh.CreatePrimitivePlane(1);
-            GameObject result = new GameObject(mesh,wallTextureIdx);
+            GameObject result = new GameObject(mesh,(int)TextureIdx.Wall);
             switch (direction)
             {
                 case MazeDirection.North:
@@ -225,14 +261,6 @@ namespace CG
             }
             return result;
         }
-        public bool HasWall(MazeDirection direction)
-        {
-            return (wallFlags & (int)direction) != 0;
-        }
-        public void RemoveWall(MazeDirection direction)
-        {
-            wallFlags = wallFlags & ~(int)direction;
-        }
         public MazeDirection GetDirectionTo(MazeCell otherCell)
         {
             if(x < otherCell.x) return MazeDirection.East;
@@ -240,7 +268,23 @@ namespace CG
             if(z < otherCell.z) return MazeDirection.South;
             return MazeDirection.North;
         }
+        public bool HasWall(MazeDirection direction)
+        {
+            return (wallFlags & (int)direction) != 0;
+        }
+        public void PickUpKey() => SetIsKey(false);
+        public void RemoveWall(MazeDirection direction)
+        {
+            wallFlags = wallFlags & ~(int)direction;
+        }
         public void RemoveWallTo(MazeCell otherCell) => RemoveWall(GetDirectionTo(otherCell));
+        public void SetIsKey(bool value) => isKey = value;
+        public void SetupExit(List<MazeDirection> possibleExitDirections)
+        {
+            isExit = true;
+            if (possibleExitDirections.Count == 0) return;
+            exitDirection = possibleExitDirections[RandomManager.Integer(possibleExitDirections.Count)];
+        }
         public int WallsToRender()
         {
             int wallsToRenderFlags = wallFlags;
@@ -262,6 +306,34 @@ namespace CG
 
     internal static class MazeUtility
     {
+        public static float DirectionToYRotation(MazeDirection direction)
+        {
+            switch (direction)
+            {
+                case MazeDirection.East: return -90f;
+                case MazeDirection.South: return 180f;
+                case MazeDirection.West: return 90f;
+                default: return 0f;
+            }
+        }
+        public static int DirectionsToFlags(List<MazeDirection> mazeDirections)
+        {
+            int flag = 0;
+            if (mazeDirections.Contains(MazeDirection.North)) flag += (int)MazeDirection.North;
+            if (mazeDirections.Contains(MazeDirection.East)) flag += (int)MazeDirection.East;
+            if (mazeDirections.Contains(MazeDirection.South)) flag += (int)MazeDirection.South;
+            if (mazeDirections.Contains(MazeDirection.West)) flag += (int)MazeDirection.West;
+            return flag;
+        }
+        public static List<MazeDirection> FlagsToDirections(int flags)
+        {
+            List<MazeDirection> directions = new List<MazeDirection>();
+            if ((flags & (int)MazeDirection.North) != 0) directions.Add(MazeDirection.North);
+            if ((flags & (int)MazeDirection.East)  != 0) directions.Add(MazeDirection.East);
+            if ((flags & (int)MazeDirection.South) != 0) directions.Add(MazeDirection.South);
+            if ((flags & (int)MazeDirection.West)  != 0) directions.Add(MazeDirection.West);
+            return directions;
+        }
         public static MazeDirection ReverseDirection(MazeDirection direction)
         {
             switch (direction)
@@ -272,12 +344,10 @@ namespace CG
                 default: return MazeDirection.East;
             }
         }
-
         public static MazeDirection RotateDirectionLeft(MazeDirection direction)
         {
             return direction == MazeDirection.North ? MazeDirection.West : (MazeDirection)((int)direction/2);
         }
-
         public static MazeDirection RotateDirectionRight(MazeDirection direction)
         {
             return direction == MazeDirection.West ? MazeDirection.North : (MazeDirection)((int)direction*2);

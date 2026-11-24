@@ -8,12 +8,20 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace CG
 {
+    enum TextureIdx
+    {
+        Wall = 0,
+        Ground = 1,
+        Ceiling = 2,
+        Key = 3,
+        Door = 4
+    }
     internal class Game : GameWindow
     {
         private Vector4 CLEAR_COLOR = new Vector4(0f, 0.3f, 0.5f, 1f);
 
         private ShaderProgram program;
-        private Texture ceilingTexture, groundTexture, wallTexture;
+        private List<Texture> textures;
         private Camera camera;
         private float cameraXInclination = -20f;
         private List<GameObject> gameObjects = new();
@@ -29,20 +37,23 @@ namespace CG
         private MazeDirection facingDirection;
         private float moveSpeed = 10f;
         private float rotationSpeed = 10f;
+        private bool hasKey = false;
+        private bool win = false;
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
         {
             CreateShaderProgram();
             CreateTextures();
-            CameraSetup();
             OpenGLSetup();
 
             // Maze
-            maze = new Maze(12);
-            gameObjects.AddRange(maze.GetGameObjects(1,0,2));
+            maze = new Maze(3);
+            gameObjects.AddRange(maze.GetGameObjects());
 
             // Player
-            currentCell = maze.cells[0,0];
+            currentCell = maze.startingCell;
+            CameraSetup();
+            Console.WriteLine($"Starting position: [{maze.startingCell.x},{maze.startingCell.z}]");
             facingDirection = MazeDirection.North;
         }
 
@@ -73,7 +84,7 @@ namespace CG
         protected override void OnKeyDown(KeyboardKeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (e.IsRepeat) return;
+            if (win || e.IsRepeat) return;
             switch (e.Key)
             {
                 case Keys.W: MoveForward(); break;
@@ -88,7 +99,7 @@ namespace CG
         {
             //camera = new OrthographicCamera(Size.X / 100f, Size.Y / 100f);
             camera = new PerspectiveCamera(90f, (float)Size.X / Size.Y);
-            camera.position = new Vector3(0f,0.5f,0f);
+            camera.position = currentCell.CameraPosition();
             // camera.rotation.X = -20f;
         }
         private void CameraRender()
@@ -97,7 +108,21 @@ namespace CG
             program.SetUniform("u_View", camera.ViewMatrix);
             program.SetUniform("u_Projection", camera.ProjectionMatrix);
         }
-
+        private void CheckExit()
+        {
+            if (currentCell.isExit && hasKey)
+            {
+                win = true;
+                Console.WriteLine("Ganhou o jogo!");
+            }
+        }
+        private void CheckKey()
+        {
+            if (!currentCell.isKey) return;
+            currentCell.PickUpKey();
+            hasKey = true;
+            Console.WriteLine("Pegou chave!");
+        }
         private void CreateShaderProgram()
         {
             // Com as novas classes de shader, podemos carregá-los diretamente de arquivos.
@@ -107,16 +132,18 @@ namespace CG
             // De forma similar, a classe ProgramShader junta os diferentes shaders.
             program = new(vertShader, fragShader);
         }
-
         private void CreateTextures()
         {
             // Carregamento de texturas, que serão armazenadas na placa de vídeo.
-            wallTexture = new Texture("./assets/textures/wall.png"); // 0
-            groundTexture = new Texture("./assets/textures/ground.png"); // 1
-            ceilingTexture = new Texture("./assets/textures/ceiling.png"); // 2
+            textures =
+            [
+                new Texture("./assets/textures/wall.png"),
+                new Texture("./assets/textures/ground.png"),
+                new Texture("./assets/textures/ceiling.png"),
+                new Texture("./assets/textures/chave.png"),
+                new Texture("./assets/textures/porta.png")
+            ];
         }
-
-
         private void FrameCleanup(FrameEventArgs args)
         {
             // Escolha da cor de limpeza.
@@ -130,6 +157,8 @@ namespace CG
             if (currentCell.HasWall(direction))
                 return;
             currentCell = maze.MoveToCell(currentCell.x,currentCell.z,direction) ?? currentCell;
+            CheckKey();
+            CheckExit();
         }
         private void MoveBackward() => MoveInMaze(MazeUtility.ReverseDirection(facingDirection));
         private void MoveForward() => MoveInMaze(facingDirection);
@@ -154,34 +183,20 @@ namespace CG
             Vector3 targetRotation = TargetRotation();
             camera.rotation = MathUtility.LerpEulerDegrees(camera.rotation, targetRotation, blend);
         }
-
         private void ShaderRender()
         {
             program.Use();// Escolha do Shader Program.
             // Para usar texturas, dizemos em qual "caixinha" a queremos colocar. Para acessar essa
             //caixinha nos shaders, atribuímos o id da caixinha à variável uniforme correspondente.
-            wallTexture.Use(0);
-            groundTexture.Use(1);
-            ceilingTexture.Use(2);
-        }
-
-        private Vector3 TargetPosition() => new Vector3(currentCell.x,0.5f,currentCell.z);
-
-        private Vector3 TargetRotation()
-        {
-            float yRotation = 0f;
-            switch (facingDirection)
+            for (int i = 0; i < textures.Count; i++)
             {
-                case MazeDirection.East: return new Vector3(cameraXInclination,-90f,0f);
-                case MazeDirection.South: return new Vector3(cameraXInclination,180f,0f);
-                case MazeDirection.West: return new Vector3(cameraXInclination,90f,0f);
+                textures[i].Use(i);
             }
-            return new Vector3(cameraXInclination,yRotation,0f);
         }
-
+        private Vector3 TargetPosition() => currentCell.CameraPosition();
+        private Vector3 TargetRotation() => new Vector3(cameraXInclination,MazeUtility.DirectionToYRotation(facingDirection),0f);
         private void TurnLeft() => facingDirection = MazeUtility.RotateDirectionLeft(facingDirection);
         private void TurnRight() => facingDirection = MazeUtility.RotateDirectionRight(facingDirection);
-
         private void UpdateTimeVariables(float _deltaTime)
         {
             deltaTime = _deltaTime;
