@@ -49,7 +49,8 @@ namespace CG
         public GameObject GenerateWallGameObject(MazeDirection direction)
         {
             Mesh mesh = Mesh.CreatePrimitivePlane(1);
-            GameObject result = new GameObject(mesh,(int)TextureIdx.Wall);
+            int textureIdx = isExit && direction == exitDirection ? (int)TextureIdx.Door : (int)TextureIdx.Wall;
+            GameObject result = new GameObject(mesh,textureIdx);
             switch (direction)
             {
                 case MazeDirection.North:

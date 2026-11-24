@@ -100,14 +100,6 @@ namespace CG
             program.SetUniform("u_View", camera.ViewMatrix);
             program.SetUniform("u_Projection", camera.ProjectionMatrix);
         }
-        private void CheckExit()
-        {
-            if (currentCell.isExit && hasKey)
-            {
-                win = true;
-                Console.WriteLine("Ganhou o jogo!");
-            }
-        }
         private void CheckKey()
         {
             if (!currentCell.isKey) return;
@@ -147,11 +139,12 @@ namespace CG
 
         private void MoveInMaze(MazeDirection direction)
         {
+            if (currentCell.isExit && currentCell.exitDirection == direction && hasKey)
+                WinTheGame();
             if (currentCell.HasWall(direction))
                 return;
             currentCell = maze.MoveToCell(currentCell.x,currentCell.z,direction) ?? currentCell;
             CheckKey();
-            CheckExit();
         }
         private void MoveBackward() => MoveInMaze(MazeUtility.ReverseDirection(facingDirection));
         private void MoveForward() => MoveInMaze(facingDirection);
@@ -194,6 +187,11 @@ namespace CG
         {
             deltaTime = _deltaTime;
             totalTime += deltaTime;
+        }
+        private void WinTheGame()
+        {
+            win = true;
+            Console.WriteLine("Ganhou o jogo!");
         }
     }
 }

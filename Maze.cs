@@ -19,7 +19,7 @@ namespace CG
             PopulateGrid();
             Generate(width,depth,debug);
             SetSpecialCells();
-            SetSpecialGameObjs();
+            SetKeyGameObj();
         }
 
         public MazeCell? MoveToCell(int x, int z, MazeDirection direction)
@@ -189,8 +189,9 @@ namespace CG
             exitCell = corners[exitCellIdx];
             exitCell.SetupExit(GetPossibleExitDirections(exitCell));
         }
-        private void SetSpecialGameObjs()
+        private void SetKeyGameObj()
         {
+            // Key
             Mesh keyMesh = Mesh.CreatePrimitivePlane(1);
             keyGameObj = new GameObject(keyMesh,(int)TextureIdx.Key);
             keyGameObj.transform.position = new Vector3(keyCell.x,0.001f,keyCell.z);
