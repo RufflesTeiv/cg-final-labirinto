@@ -195,6 +195,7 @@ namespace CG
             win = true;
             AudioManager.PlaySFX(SFX.Win);
             Console.WriteLine("Ganhou o jogo!");
+            Console.WriteLine($"Tempo total: {totalTime.ToString("0.00")} segundos");
         }
     }
 }
