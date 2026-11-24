@@ -39,13 +39,13 @@ namespace CG
             OpenGLSetup();
 
             // Maze
-            maze = new Maze(3);
+            maze = new Maze(2);
             gameObjects.AddRange(maze.GetGameObjects());
 
             // Player
             currentCell = maze.startingCell;
             CameraSetup();
-            Console.WriteLine($"Starting position: [{maze.startingCell.x},{maze.startingCell.z}]");
+            // Console.WriteLine($"Starting position: [{maze.startingCell.x},{maze.startingCell.z}]");
             facingDirection = MazeDirection.North;
         }
 
@@ -105,6 +105,7 @@ namespace CG
             if (!currentCell.isKey) return;
             currentCell.PickUpKey();
             hasKey = true;
+            AudioManager.PlaySFX(SFX.Key);
             gameObjects.Remove(maze.keyGameObj);
             Console.WriteLine("Pegou chave!");
         }
@@ -144,6 +145,7 @@ namespace CG
             if (currentCell.HasWall(direction))
                 return;
             currentCell = maze.MoveToCell(currentCell.x,currentCell.z,direction) ?? currentCell;
+            AudioManager.PlaySFX(SFX.Step);
             CheckKey();
         }
         private void MoveBackward() => MoveInMaze(MazeUtility.ReverseDirection(facingDirection));
@@ -191,6 +193,7 @@ namespace CG
         private void WinTheGame()
         {
             win = true;
+            AudioManager.PlaySFX(SFX.Win);
             Console.WriteLine("Ganhou o jogo!");
         }
     }
